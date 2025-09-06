@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { UploadInterface } from './UploadInterface' // Import the upload component
 
-export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSources, onSourcesUploaded }) {
+export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSources, onSourcesUploaded, onOpenUploadModal }) {
   const [selectedTab, setSelectedTab] = useState('sources')
   const [quizTopic, setQuizTopic] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -87,7 +87,10 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
               Sources ({uploadedSources.length})
             </h2>
             <div className="flex space-x-2">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+              <button 
+                onClick={onOpenUploadModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              >
                 + Add
               </button>
               <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
@@ -110,13 +113,32 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
               {uploadedSources.map((source) => (
                 <div key={source.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-orange-500 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">PDF</span>
+                    <div className={`w-8 h-8 rounded flex items-center justify-center ${
+                      source.type === 'PDF' ? 'bg-orange-500' :
+                      source.type === 'YouTube' ? 'bg-red-500' :
+                      source.type === 'Website' ? 'bg-blue-500' : 'bg-gray-500'
+                    }`}>
+                      {source.type === 'PDF' ? (
+                        <span className="text-white text-xs font-bold">PDF</span>
+                      ) : source.type === 'YouTube' ? (
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                      ) : source.type === 'Website' ? (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                        </svg>
+                      ) : (
+                        <span className="text-white text-xs font-bold">?</span>
+                      )}
                     </div>
                     <div>
                       <p className="text-white font-medium">{source.name}</p>
                       <p className="text-gray-400 text-sm">
-                        {(source.size / 1024 / 1024).toFixed(2)} MB
+                        {source.type === 'PDF' && source.size ? 
+                          `${(source.size / 1024 / 1024).toFixed(2)} MB` : 
+                          source.type
+                        }
                       </p>
                     </div>
                   </div>
@@ -138,7 +160,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
               <h3 className="text-xl font-semibold text-white mb-2">No sources uploaded yet</h3>
               <p className="text-gray-400 mb-4">Upload documents to get started with your learning games</p>
               <button 
-                onClick={() => {/* You can add logic to open upload modal here */}}
+                onClick={onOpenUploadModal}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
               >
                 Upload Sources

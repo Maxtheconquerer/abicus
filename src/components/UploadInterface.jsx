@@ -5,6 +5,9 @@ export function UploadInterface({ onSourcesUploaded }) {
   const [dragOver, setDragOver] = useState(false)
   const [sourcesCount, setSourcesCount] = useState(0)
   const [uploadedSources, setUploadedSources] = useState([])
+  const [currentView, setCurrentView] = useState('main') // 'main', 'website', 'youtube'
+  const [websiteUrls, setWebsiteUrls] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
 
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -20,7 +23,8 @@ export function UploadInterface({ onSourcesUploaded }) {
     const newSources = Array.from(files).map((file, index) => ({
       id: Date.now() + index,
       name: file.name,
-      type: file.type,
+      type: 'PDF',
+      sourceType: 'file',
       size: file.size,
       file: file
     }))
@@ -31,6 +35,51 @@ export function UploadInterface({ onSourcesUploaded }) {
     // Call the callback to notify parent component
     if (onSourcesUploaded) {
       onSourcesUploaded([...uploadedSources, ...newSources])
+    }
+  }
+
+  const handleWebsiteSubmit = () => {
+    if (websiteUrls.trim()) {
+      const urls = websiteUrls.split(/[\n\s]+/).filter(url => url.trim())
+      const newSources = urls.map((url, index) => ({
+        id: Date.now() + index,
+        name: url,
+        type: 'Website',
+        sourceType: 'url',
+        url: url
+      }))
+      
+      const updatedSources = [...uploadedSources, ...newSources]
+      setUploadedSources(updatedSources)
+      setSourcesCount(prev => prev + urls.length)
+      setWebsiteUrls('')
+      setCurrentView('main')
+      
+      if (onSourcesUploaded) {
+        onSourcesUploaded(updatedSources)
+      }
+    }
+  }
+
+  const handleYouTubeSubmit = () => {
+    if (youtubeUrl.trim()) {
+      const newSource = {
+        id: Date.now(),
+        name: youtubeUrl,
+        type: 'YouTube',
+        sourceType: 'youtube',
+        url: youtubeUrl
+      }
+      
+      const updatedSources = [...uploadedSources, newSource]
+      setUploadedSources(updatedSources)
+      setSourcesCount(prev => prev + 1)
+      setYoutubeUrl('')
+      setCurrentView('main')
+      
+      if (onSourcesUploaded) {
+        onSourcesUploaded(updatedSources)
+      }
     }
   }
 
@@ -46,8 +95,8 @@ export function UploadInterface({ onSourcesUploaded }) {
     processFiles(files)
   }
 
-  return (
-    <div className="p-6 h-full bg-gray-900 text-white">
+  const renderMainView = () => (
+    <>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -140,13 +189,19 @@ export function UploadInterface({ onSourcesUploaded }) {
             <h4 className="font-semibold text-white">Link</h4>
           </div>
           <div className="space-y-2">
-            <button className="w-full flex items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+            <button 
+              onClick={() => setCurrentView('website')}
+              className="w-full flex items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            >
               <svg className="w-5 h-5 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
               </svg>
               <span className="text-white">Website</span>
             </button>
-            <button className="w-full flex items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+            <button 
+              onClick={() => setCurrentView('youtube')}
+              className="w-full flex items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            >
               <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
@@ -190,6 +245,122 @@ export function UploadInterface({ onSourcesUploaded }) {
         </div>
         <span className="text-gray-400">{sourcesCount}/50</span>
       </div>
+    </>
+  )
+
+  const renderWebsiteView = () => (
+    <>
+      {/* Header with Back Button */}
+      <div className="flex items-center mb-6">
+        <button 
+          onClick={() => setCurrentView('main')}
+          className="mr-4 p-2 hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2">Website URLs</h1>
+          <p className="text-gray-400">Paste in Web URLs below to upload as sources in NotebookLM.</p>
+        </div>
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-white text-sm font-medium mb-2">Paste URLs*</label>
+        <textarea
+          value={websiteUrls}
+          onChange={(e) => setWebsiteUrls(e.target.value)}
+          placeholder="https://example.com/article1&#10;https://example.com/article2"
+          className="w-full h-32 bg-gray-800 text-white p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+        />
+      </div>
+
+      <div className="mb-6">
+        <h4 className="text-white font-medium mb-2">Notes:</h4>
+        <ul className="text-gray-400 text-sm space-y-1">
+          <li>• To add multiple URLs, separate with a space or new line.</li>
+          <li>• Only the visible text on the website will be imported.</li>
+          <li>• Paid articles are not supported.</li>
+        </ul>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleWebsiteSubmit}
+          disabled={!websiteUrls.trim()}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg"
+        >
+          Insert
+        </button>
+      </div>
+    </>
+  )
+
+  const renderYouTubeView = () => (
+    <>
+      {/* Header with Back Button */}
+      <div className="flex items-center mb-6">
+        <button 
+          onClick={() => setCurrentView('main')}
+          className="mr-4 p-2 hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2">YouTube URL</h1>
+          <p className="text-gray-400">Paste in a YouTube URL below to upload as a source in NotebookLM.</p>
+        </div>
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-white text-sm font-medium mb-2">Paste YouTube URL*</label>
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+            <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+          </div>
+          <input
+            type="url"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className="w-full bg-gray-800 text-white p-4 pl-12 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h4 className="text-white font-medium mb-2">Notes:</h4>
+        <ul className="text-gray-400 text-sm space-y-1">
+          <li>• Only the text transcript will be imported at this moment</li>
+          <li>• Only public YouTube videos are supported</li>
+          <li>• Recently uploaded videos may not be available to import</li>
+          <li>• If upload fails, <a href="#" className="text-blue-400 hover:underline">learn more</a> for common reasons.</li>
+        </ul>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleYouTubeSubmit}
+          disabled={!youtubeUrl.trim()}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg"
+        >
+          Insert
+        </button>
+      </div>
+    </>
+  )
+
+  return (
+    <div className="p-6 h-full bg-gray-900 text-white">
+      {currentView === 'main' && renderMainView()}
+      {currentView === 'website' && renderWebsiteView()}
+      {currentView === 'youtube' && renderYouTubeView()}
+
     </div>
   )
 }

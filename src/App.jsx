@@ -19,7 +19,7 @@ function App() {
   }
 
   const handleSourcesUploaded = (sources) => {
-    setUploadedSources(sources)
+    setUploadedSources(prevSources => [...prevSources, ...sources])
     setShowUploadModal(false) // Close the modal when sources are uploaded
   }
 
@@ -90,6 +90,7 @@ function App() {
         onCloseUploadModal={() => setShowUploadModal(false)}
         uploadedSources={uploadedSources}
         onSourcesUploaded={handleSourcesUploaded}
+        onOpenUploadModal={() => setShowUploadModal(true)}
       />
       case 'community':
         return <Community 
