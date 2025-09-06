@@ -1,12 +1,27 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from "../supabaseClient"
+import { UploadInterface } from './components/UploadInterface'
+import { LearningGames } from './components/LearningGames'
+import { Community } from './components/Community'
 
 function App() {
-
   const [session, setSession] = useState([])
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [usersOnline, setUsersOnline] = useState([])
+  const [activeSection, setActiveSection] = useState('community') // New state for navigation
+  const [showUploadModal, setShowUploadModal] = useState(false) // New state for upload modal
+  const [uploadedSources, setUploadedSources] = useState([]) // State for uploaded sources
+
+  const handleNavigateToLearningGamesWithUpload = () => {
+    setActiveSection('learning-games')
+    setShowUploadModal(true)
+  }
+
+  const handleSourcesUploaded = (sources) => {
+    setUploadedSources(sources)
+    setShowUploadModal(false) // Close the modal when sources are uploaded
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -21,49 +36,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-     
     if (!session?.user) {
       setUsersOnline([]);
       return;
-     }
-
-     const roomOne = supabase.channel("room_one", {
-      config: {
-        presence: {
-          key: session?.user?.id
-        }
-      }
-     });
-
-     roomOne.on("broadcast",
-      {event: "message"},
-      (payload) => {
-        setMessages((prevMessages) => [...prevMessages, payload.payload]);
-        console.log(messages)
-      }
-     )
-
-     roomOne.subscribe(async (status) => {
-      if (status==="SUBSCRIBED") {
-        await roomOne.track({
-          id: session?.user?.id 
-        });
-      }
-     })
-
-     roomOne.on('presence', {event: 'sync'}, () => {
-        const state = roomOne.presenceState()
-        setUsersOnline(Object.keys(state))
-     } )
-
-     return () => {
-      roomOne.unsubscribe();
-     }
- 
+    } 
   }, [session])
 
   // send message
-
   const sendMessage = async (e) => {
     e.preventDefault();
 
@@ -101,51 +80,100 @@ function App() {
     const {error} = await supabase.auth.signOut()
   }
 
+  const renderMainContent = () => {
+    switch (activeSection) {
+      case 'upload-documents':
+        return <UploadInterface />
+      case 'learning-games':
+        return <LearningGames 
+        showUploadModal={showUploadModal}
+        onCloseUploadModal={() => setShowUploadModal(false)}
+        uploadedSources={uploadedSources}
+        onSourcesUploaded={handleSourcesUploaded}
+      />
+      case 'community':
+        return <Community 
+        onNavigateToLearningGames={handleNavigateToLearningGamesWithUpload} 
+        setActiveSection={setActiveSection}
+        showUploadModal={showUploadModal}
+        setShowUploadModal={setShowUploadModal}
+      />
+      default:
+        return <UploadInterface />
+    }
+  }
+
   if (!session) {
     return (
-      <div className = "w-full flex h-screen justify-center items-center" >
-        <button onClick={signIn}> sign in with google</button>
+      <div className="w-full flex h-screen justify-center items-center">
+        <button onClick={signIn}>sign in with google</button>
       </div>
     )
   } else {
-    
     return (
-
-    <div className = "w-full flex h-screen justify-center items-center p-4" >
-      <div className = "border-[1px] border-gray-700 max-w-6xl w-full min-h-[600px] rounded-lg">
-        {/* Header */}
-        <div className="flex justify-between h-20 border-b-[1px] border-gray-700">
-          <div className="p-4">
-            <p >signed in as {session?.user?.user_metadata?.full_name }</p>
+      <div className="w-full flex h-screen justify-center items-center p-4">
+        <div className="border-[1px] border-gray-700 max-w-9xl w-full min-h-[900px] rounded-lg flex">
+          {/* Sidebar Navigation */}
+          <div className="w-64 border-r-[1px] border-gray-700 flex flex-col">
+            <div className="p-4 border-b-[1px] border-gray-700">
+              <p className="text-sm text-gray-400">signed in as {session?.user?.user_metadata?.full_name}</p>
+              <button onClick={signOut} className="mt-2 text-sm text-red-400 hover:text-red-300">
+                sign out
+              </button>
+            </div>
+            
+            <nav className="flex-1 p-4">
+              <ul className="space-y-2">
+                <li>
+                  <button
+                    onClick={() => setActiveSection('community')}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      activeSection === 'community' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    🏠 Community
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveSection('upload-documents')}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      activeSection === 'upload-documents' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    📄 Upload Documents
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveSection('learning-games')}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      activeSection === 'learning-games' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    🎮 Learning Games
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
-          <button onClick={signOut}  className="m-2 sm:mr-4">sign out</button>
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-auto">
+              {renderMainContent()}
+            </div>
+          </div>
         </div>
-        {/* Main Chat */}
-        <div className="p-4 flex flex-col overflow-y-auto h-[500px]">
-        
-            <p> UPLOAD DOCUMENTS </p>
-        </div>
-        {/* Message Input */}
-        <form
-            onSubmit={sendMessage}
-            className="flex flex-col sm:flex-row p-4 border-t-[1px] border-gray-700"
-          >
-            <input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              type="text"
-              placeholder="Type a message..."
-              className="p-2 w-full bg-[#00000040] rounded-lg"
-            />
-            <button className="mt-4 sm:mt-0 sm:ml-8 text-white max-h-12">
-              Send
-            </button>
-            <span ref={scroll}></span>
-          </form>
       </div>
-    </div>
-  )
-}
+    )
+  }
 }
 
 export default App
