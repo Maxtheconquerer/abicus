@@ -1,13 +1,22 @@
 // src/components/UploadInterface.jsx
 import { useState } from 'react'
+import { retrieveNotebooks, newNotebook } from '../supabase/retrieve_notebooks'
+import { uploadSources } from '../supabase/sources'
 
-export function UploadInterface({ onSourcesUploaded }) {
+export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNotebookCreation }) {
   const [dragOver, setDragOver] = useState(false)
   const [sourcesCount, setSourcesCount] = useState(0)
   const [uploadedSources, setUploadedSources] = useState([])
-  const [currentView, setCurrentView] = useState('main') // 'main', 'website', 'youtube'
+  const [currentView, setCurrentView] = useState('main') 
   const [websiteUrls, setWebsiteUrls] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [notebookCreated, setNotebookCreated] = useState(false)
+  const [notebookId, setNotebookId] = useState(existingNotebookId)
+
+  const [isStreaming, setIsStreaming] = useState(false)
+	const [response, setResponse] = useState("")
+	const [generatingAIResponse, setGeneratingAIResponse] = useState(false)
+
 
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -19,26 +28,110 @@ export function UploadInterface({ onSourcesUploaded }) {
     setDragOver(false)
   }
 
-  const processFiles = (files) => {
-    const newSources = Array.from(files).map((file, index) => ({
-      id: Date.now() + index,
-      name: file.name,
-      type: 'PDF',
-      sourceType: 'file',
-      size: file.size,
-      file: file
-    }))
+  const CallRAG = async(newSources) => {
+		
+		const payload = newSources
+
+		console.log('Payload', payload)
+
+		setGeneratingAIResponse(true)
+
+    const assistantRAGStream = 'http://127.0.0.1:8001/context/pdf_stream'
+		console.log("Payload", payload)
+
+		try {
+			console.log("Calling API to add message...");
+	  
+			console.log("Preparing to call EventSource API", assistantRAGStream)
+
+      const response = await fetch(assistantRAGStream, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      const reader = response.body.getReader();
+
+		} catch (error) {
+			console.error("Error in send message:", error)
+			setGeneratingAIResponse(false)
+		}
+	}
+
+
+  const processFiles = async (files) => {
+
+    if (!notebookId) {
+      const data = {
+        title: "New Notebook",
+        description: "A new collaborative learning resource",
+        emoji: "📚",
+      }
+
+      const notebookId_ = await newNotebook(data)
+
+      console.log('notebook_id_new', notebookId_)
+      setNotebookId(notebookId_)
+      setNotebookCreated(true)
+      
+      // const base64 = await fileToBase64(file)
     
-    setUploadedSources(prev => [...prev, ...newSources])
-    setSourcesCount(prev => prev + files.length)
-    
-    // Call the callback to notify parent component
-    if (onSourcesUploaded) {
-      onSourcesUploaded([...uploadedSources, ...newSources])
+      const newSources = Array.from(files).map((file, index) => ({
+        id: Date.now() + index,
+        name: file.name,
+        type: 'PDF',
+        sourceType: 'file',
+        size: file.size,
+        file: file,
+        notebook_id: notebookId_
+      }))
+
+      console.log('Calling Table')
+      await uploadSources(newSources, 'pdf')
+      setUploadedSources(newSources)
+
+      // Call the callback to notify parent component
+      if (onSourcesUploaded) {
+        onSourcesUploaded([...uploadedSources, ...newSources])
+      }
+
+      // Call back 
+      if (onNotebookCreation) {
+        onNotebookCreation(notebookId_)
+      }
+
+      // await CallRAG(newSources)
+
+    } else {
+
+      const newSources = Array.from(files).map((file, index) => ({
+        id: Date.now() + index,
+        name: file.name,
+        type: 'PDF',
+        sourceType: 'file',
+        size: file.size,
+        file: file,
+        notebook_id: notebookId
+      }))
+
+      console.log('Calling Table with Existing Id')
+      await uploadSources(newSources, 'pdf')
+      setUploadedSources(newSources)
+
+      // Call the callback to notify parent component
+      if (onSourcesUploaded) {
+        onSourcesUploaded([...uploadedSources, ...newSources])
+      }
+      
     }
+
+    setSourcesCount(prev => prev + files.length)
+  
   }
 
-  const handleWebsiteSubmit = () => {
+  const handleWebsiteSubmit = async() => {
     if (websiteUrls.trim()) {
       const urls = websiteUrls.split(/[\n\s]+/).filter(url => url.trim())
       const newSources = urls.map((url, index) => ({
@@ -48,40 +141,106 @@ export function UploadInterface({ onSourcesUploaded }) {
         sourceType: 'url',
         url: url
       }))
-      
-      const updatedSources = [...uploadedSources, ...newSources]
-      setUploadedSources(updatedSources)
-      setSourcesCount(prev => prev + urls.length)
+
+      console.log('Calling Table')
+
+      // if no notebookId exists, create one
+      if (!notebookId) {
+        const data = {
+          title: "New Notebook",
+          description: "A new collaborative learning resource",
+          emoji: "📚",
+        }
+        
+        const notebookId_ = await newNotebook(data)
+        setNotebookId(notebookId_)
+        console.log('Created new notebook:', notebookId_)
+        await uploadSources(newSources, 'website', notebookId_)
+
+        setUploadedSources(newSources)
+        if (onSourcesUploaded) {
+          onSourcesUploaded(newSources)
+        }
+
+        if (onNotebookCreation) {
+          onNotebookCreation(notebookId_)
+        }
+
+      } else {
+
+        await uploadSources(newSources, 'website', notebookId)
+        setUploadedSources(newSources)
+
+        if (onSourcesUploaded) {
+          onSourcesUploaded([...uploadedSources, ...newSources])
+        }
+      }
+      // setUploadedSources(updatedSources)
+      // setSourcesCount(prev => prev + urls.length)
       setWebsiteUrls('')
       setCurrentView('main')
+      setNotebookCreated(true)
       
-      if (onSourcesUploaded) {
-        onSourcesUploaded(updatedSources)
-      }
     }
   }
 
-  const handleYouTubeSubmit = () => {
+  const handleYouTubeSubmit = async() => {
     if (youtubeUrl.trim()) {
-      const newSource = {
-        id: Date.now(),
-        name: youtubeUrl,
+
+      const urls = youtubeUrl.split(/[\n\s]+/).filter(url => url.trim())
+
+      const newSources = urls.map((url, index) => ({
+        id: Date.now() + index,
+        name: url,
         type: 'YouTube',
         sourceType: 'youtube',
-        url: youtubeUrl
+        url: url,
+      }))
+
+      console.log('Calling table')
+
+      if (!notebookId) {
+        const data = {
+          title: "New Notebook",
+          description: "A new collaborative learning resource",
+          emoji: "📚",
+        }
+
+        const notebookId_ = await newNotebook(data)
+        setNotebookId(notebookId_)
+        console.log('Created new notebook:', notebookId_)
+
+        await uploadSources(newSources, 'youtube', notebookId_)
+
+        setUploadedSources(newSources)
+
+        if (onSourcesUploaded) {
+          onSourcesUploaded([...uploadedSources, ...newSources])
+        }
+
+        if (onNotebookCreation) {
+          onNotebookCreation(notebookId_)
+        }
+      } else {
+
+        await uploadSources(newSources, 'youtube', notebookId)
+        setUploadedSources(newSources)
+
+        if (onSourcesUploaded) {
+          onSourcesUploaded([...uploadedSources, ...newSources])
+        }
+
       }
       
-      const updatedSources = [...uploadedSources, newSource]
+      const updatedSources = [...uploadedSources, newSources]
       setUploadedSources(updatedSources)
       setSourcesCount(prev => prev + 1)
       setYoutubeUrl('')
       setCurrentView('main')
       
-      if (onSourcesUploaded) {
-        onSourcesUploaded(updatedSources)
-      }
     }
   }
+
 
   const handleDrop = (e) => {
     e.preventDefault()

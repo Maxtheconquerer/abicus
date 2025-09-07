@@ -1,11 +1,46 @@
 // src/components/LearningGames.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UploadInterface } from './UploadInterface' // Import the upload component
+import { retrieveSources } from '../supabase/sources'
 
-export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSources, onSourcesUploaded, onOpenUploadModal }) {
+export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSources, onSourcesUploaded, onOpenUploadModal, notebookId, notebookName }) {
   const [selectedTab, setSelectedTab] = useState('sources')
   const [quizTopic, setQuizTopic] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [sourcesFromDb, setSourcesFromDb] = useState([])
+  const [sourcesLength, setSourcesLength] = useState(0)
+  const [notebookId__, setNotebookId] = useState('')
+
+  useEffect(() => {
+    if (notebookId) { 
+      loadPage()
+  }
+  }, [notebookId, uploadedSources, notebookId__])
+
+  const loadPage = async() => {
+    
+    if (!notebookId__) {
+      console.log('Searching Table', notebookId)
+      setNotebookId(notebookId)
+      const sourcesDB = await retrieveSources(notebookId)
+      console.log('SourcesfromDB', sourcesDB)
+      setSourcesFromDb(sourcesDB)
+      setSourcesLength(sourcesDB.length)
+      
+    } else {
+      console.log('Searching Table', notebookId__)
+      setNotebookId(notebookId__)
+      const sourcesDB = await retrieveSources(notebookId__)
+      console.log('SourcesfromDB', sourcesDB)
+      setSourcesFromDb(sourcesDB)
+      setSourcesLength(sourcesDB.length)
+    }
+  }
+    
+
+  const changeNotebookId = async(notebook) => {
+    setNotebookId(notebook)
+  }
 
   const tabs = [
     { id: 'sources', label: 'Sources', active: true },
@@ -39,7 +74,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
             
             {/* Use UploadInterface component inside modal */}
             <div className="bg-gray-800 rounded-lg p-6">
-              <UploadInterface onSourcesUploaded={onSourcesUploaded} />
+              <UploadInterface onSourcesUploaded={onSourcesUploaded} existingNotebookId={notebookId__} onNotebookCreation={changeNotebookId}/>
             </div>
           </div>
         </div>
@@ -55,7 +90,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
         <div className="flex-1">
           <input 
             type="text" 
-            value="Neural Ranking Models and Instagram's Explore System"
+            value={notebookName || "Select a notebook"}
             className="w-full bg-gray-800 text-white text-lg font-medium px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
             readOnly
           />
@@ -84,7 +119,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-white">
-              Sources ({uploadedSources.length})
+              Sources ({sourcesLength})
             </h2>
             <div className="flex space-x-2">
               <button 
@@ -99,7 +134,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
             </div>
           </div>
           
-          {uploadedSources.length > 0 ? (
+          {notebookId && sourcesFromDb.length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center space-x-2 mb-4">
                 <input 
@@ -110,7 +145,7 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
                 <label htmlFor="select-all" className="text-gray-300">Select all sources</label>
               </div>
               
-              {uploadedSources.map((source) => (
+              {sourcesFromDb.map((source) => (
                 <div key={source.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className={`w-8 h-8 rounded flex items-center justify-center ${
@@ -157,14 +192,20 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">No sources uploaded yet</h3>
-              <p className="text-gray-400 mb-4">Upload documents to get started with your learning games</p>
-              <button 
-                onClick={onOpenUploadModal}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
-              >
-                Upload Sources
-              </button>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {!notebookId ? 'No notebook selected' : 'No sources uploaded yet'}
+              </h3>
+              <p className="text-gray-400 mb-4">
+                {!notebookId ? 'Create a new notebook to get started' : 'Upload documents to get started with your learning games'}
+              </p>
+              {notebookId && (
+                <button 
+                  onClick={onOpenUploadModal}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+                >
+                  Upload Sources
+                </button>
+              )}
             </div>
           )}
         </div>

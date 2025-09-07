@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient"
 import { UploadInterface } from './components/UploadInterface'
 import { LearningGames } from './components/LearningGames'
 import { Community } from './components/Community'
+import { uploadSources } from './supabase/sources'
 
 function App() {
   const [session, setSession] = useState([])
@@ -11,7 +12,12 @@ function App() {
   const [usersOnline, setUsersOnline] = useState([])
   const [activeSection, setActiveSection] = useState('community') // New state for navigation
   const [showUploadModal, setShowUploadModal] = useState(false) // New state for upload modal
-  const [uploadedSources, setUploadedSources] = useState([]) // State for uploaded sources
+  const [currentNotebookId, setCurrentNotebookId] = useState(null) // Current active notebook ID
+  const [currentNotebookName, setCurrentNotebookName] = useState('') // Current active notebook name
+  const [notebooks, setNotebooks] = useState({}) // State for sources organized by notebook ID: {notebookId: [sources]}
+  const [parentNotebookId, setParentNotebookId] = useState('');
+
+
 
   const handleNavigateToLearningGamesWithUpload = () => {
     setActiveSection('learning-games')
@@ -19,8 +25,54 @@ function App() {
   }
 
   const handleSourcesUploaded = (sources) => {
-    setUploadedSources(prevSources => [...prevSources, ...sources])
+    if (currentNotebookId) {
+      setNotebooks(prevNotebooks => ({
+        ...prevNotebooks,
+        [currentNotebookId]: [
+          ...(prevNotebooks[currentNotebookId] || []),
+          ...sources
+        ]
+      }))
+    }
+
+    // uploadSources(sources, 'pdf')
+
     setShowUploadModal(false) // Close the modal when sources are uploaded
+  }
+
+  const handleNotebookIdChange = (notebookId) => {
+    setParentNotebookId(notebookId);
+  };
+
+  const createNewNotebook = () => {
+    // const newNotebookId = `notebook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    // setCurrentNotebookId(newNotebookId)
+    // setCurrentNotebookName('New Notebook')
+    // setNotebooks(prevNotebooks => ({
+    //   ...prevNotebooks,
+    //   [newNotebookId]: []
+    // }))
+    // return newNotebookId
+  }
+
+  const handleNotebookCreation = (realNotebookId) => {
+    setCurrentNotebookId(realNotebookId)
+    setCurrentNotebookName('New Notebook')
+    setNotebooks(prevNotebooks => ({
+      ...prevNotebooks,
+      [realNotebookId]: []
+    }))
+  }
+
+  const selectNotebook = (notebookId, notebookName) => {
+    console.log('NotebookId', notebookId)
+    setCurrentNotebookId(notebookId)
+    setCurrentNotebookName(notebookName || '')
+    // Initialize empty sources array if notebook doesn't exist yet
+    setNotebooks(prevNotebooks => ({
+      ...prevNotebooks,
+      [notebookId]: prevNotebooks[notebookId] || []
+    }))
   }
 
   useEffect(() => {
@@ -88,9 +140,12 @@ function App() {
         return <LearningGames 
         showUploadModal={showUploadModal}
         onCloseUploadModal={() => setShowUploadModal(false)}
-        uploadedSources={uploadedSources}
+        uploadedSources={currentNotebookId ? (notebooks[currentNotebookId] || []) : []}
         onSourcesUploaded={handleSourcesUploaded}
         onOpenUploadModal={() => setShowUploadModal(true)}
+        notebookId={currentNotebookId}
+        notebookName={currentNotebookName}
+        onNotebookCreation={handleNotebookCreation}
       />
       case 'community':
         return <Community 
@@ -98,6 +153,9 @@ function App() {
         setActiveSection={setActiveSection}
         showUploadModal={showUploadModal}
         setShowUploadModal={setShowUploadModal}
+        onCreateNotebook={createNewNotebook}
+        onSelectNotebook={selectNotebook}
+        onNotebookIdChange={handleNotebookIdChange}
       />
       default:
         return <UploadInterface />
@@ -116,12 +174,6 @@ function App() {
         <div className="border-[1px] border-gray-700 max-w-9xl w-full min-h-[900px] rounded-lg flex">
           {/* Sidebar Navigation */}
           <div className="w-64 border-r-[1px] border-gray-700 flex flex-col">
-            <div className="p-4 border-b-[1px] border-gray-700">
-              <p className="text-sm text-gray-400">signed in as {session?.user?.user_metadata?.full_name}</p>
-              <button onClick={signOut} className="mt-2 text-sm text-red-400 hover:text-red-300">
-                sign out
-              </button>
-            </div>
             
             <nav className="flex-1 p-4">
               <ul className="space-y-2">
@@ -134,10 +186,10 @@ function App() {
                         : 'text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    🏠 Community
+                    🏠 Notebooks
                   </button>
                 </li>
-                <li>
+                {/* <li>
                   <button
                     onClick={() => setActiveSection('upload-documents')}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
@@ -160,9 +212,16 @@ function App() {
                   >
                     🎮 Learning Games
                   </button>
-                </li>
+                </li> */}
               </ul>
             </nav>
+
+            <div className="p-4 border-b-[1px] border-gray-700">
+              <p className="text-sm text-gray-400">signed in as {session?.user?.user_metadata?.full_name}</p>
+              <button onClick={signOut} className="mt-2 text-sm text-red-400 hover:text-red-300">
+                sign out
+              </button>
+            </div>
           </div>
 
           {/* Main Content Area */}

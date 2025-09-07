@@ -1,82 +1,76 @@
 // src/components/Community.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UploadInterface } from './UploadInterface' // Import the upload component
+import { retrieveNotebooks, newNotebook } from '../supabase/retrieve_notebooks'
+import { uploadSources } from '../supabase/sources'
 
-export function Community({ onNavigateToLearningGames, showUploadModal }) {
+export function Community({ onNavigateToLearningGames, showUploadModal, onCreateNotebook, onSelectNotebook, setActiveSection, onNotebookIdChange}) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newNotebookTitle, setNewNotebookTitle] = useState('')
+  const [NOTEBOOKID, setNotebookId] = useState('')
 
-  // Sample notebooks data
-  const [notebooks, setNotebooks] = useState([
-    {
-      id: 1,
-      title: "AI-Powered Recommendations",
-      description: "Advanced AI algorithms and machine learning techniques",
-      emoji: "🤖",
-      sources: 13,
-      members: 245,
-      dateCreated: "Sep 6, 2025",
-      isPublic: true
-    },
-    {
-      id: 2,
-      title: "React Development",
-      description: "Modern React patterns, hooks, and best practices",
-      emoji: "⚛️",
-      sources: 8,
-      members: 142,
-      dateCreated: "Sep 5, 2025",
-      isPublic: true
-    },
-    {
-      id: 3,
-      title: "Machine Learning Basics",
-      description: "Introduction to ML algorithms and data science",
-      emoji: "🧠",
-      sources: 21,
-      members: 189,
-      dateCreated: "Sep 4, 2025",
-      isPublic: false
-    },
-    {
-      id: 4,
-      title: "Web Design Principles",
-      description: "UI/UX design fundamentals and modern trends",
-      emoji: "🎨",
-      sources: 15,
-      members: 97,
-      dateCreated: "Sep 3, 2025",
-      isPublic: true
+  // Notebooks data loaded from database
+  const [notebooks, setNotebooks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Load notebooks from database on component mount
+  useEffect(() => {
+    const loadNotebooks = async () => {
+      try {
+        setLoading(true)
+        const data = await retrieveNotebooks()
+        setNotebooks(data || [])
+      } catch (err) {
+        console.error('Error loading notebooks:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+
+    loadNotebooks()
+  }, [])
+
+  const updateNotebookId = (notebookId_) => {
+    setNotebookId(notebookId_);
+    onNotebookIdChange(notebookId_); 
+  };
 
   const handleCreateNotebookClick = () => {
+      const newNotebookId = onCreateNotebook()
+
+      // setNotebookId(notebookId_)
+      setNotebooks(prevNotebooks => [...prevNotebooks, newNotebook])
+      
+      // Navigate to LearningGames and open the upload modal
       onNavigateToLearningGames()
     }
   
-  // Keep the modal version for backward compatibility
-  const handleCreateNotebook = () => {
-    if (newNotebookTitle.trim()) {
-      const newNotebook = {
-        id: notebooks.length + 1,
-        title: newNotebookTitle,
-        description: "New notebook for collaborative learning",
-        emoji: "📚",
-        sources: 0,
-        members: 1,
-        dateCreated: new Date().toLocaleDateString(),
-        isPublic: true
-      }
-      setNotebooks([...notebooks, newNotebook])
-      setNewNotebookTitle('')
-      setShowCreateModal(false)
-    }
-  }
 
   const handleNotebookClick = (notebook) => {
     console.log('Opening notebook:', notebook.title)
-    // Here you would navigate to the specific notebook
+    console.log('NotebookId-Community.jsx', notebook.id)
+    // Select the notebook and navigate to LearningGames without opening upload modal
+    if (onSelectNotebook) {
+      onSelectNotebook(notebook.id, notebook.title)
+      setNotebookId(notebook.id);
+    }
+    // Navigate to LearningGames without opening the upload modal
+    if (setActiveSection) {
+      setActiveSection('learning-games')
+    }
   }
+
+  const handleSourcesUploaded = async (sources) => {
+    // console.log("Received sources:", sources)
+  
+    // If you want to persist them in Supabase:
+    // if (NOTEBOOKID) {
+    //   uploadSources(sources, 'pdf', NOTEBOOKID)
+    // }
+  }
+  
 
   return (
     <div className="p-6 h-full bg-white">
@@ -96,7 +90,7 @@ export function Community({ onNavigateToLearningGames, showUploadModal }) {
             
             {/* Use UploadInterface component inside modal */}
             <div className="bg-gray-800 rounded-lg p-6">
-              <UploadInterface />
+              <UploadInterface onSourcesUploaded={handleSourcesUploaded} existingNotebookId={NOTEBOOKID}/>
             </div>
           </div>
         </div>
@@ -117,9 +111,43 @@ export function Community({ onNavigateToLearningGames, showUploadModal }) {
         </button>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading notebooks...</h3>
+          <p className="text-gray-600">Fetching your learning resources</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Error loading notebooks</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
       {/* Notebooks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {notebooks.map((notebook) => (
+      {!loading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {notebooks.length > 0 ? (
+            notebooks.map((notebook) => (
           <div
             key={notebook.id}
             onClick={() => handleNotebookClick(notebook)}
@@ -164,8 +192,20 @@ export function Community({ onNavigateToLearningGames, showUploadModal }) {
               </svg>
             </div>
           </div>
-        ))}
-      </div>
+        ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No notebooks yet</h3>
+              <p className="text-gray-600 mb-4">Create your first notebook to get started</p>
+            </div>
+          )}
+        </div>
+      )}
 
 
     </div>
