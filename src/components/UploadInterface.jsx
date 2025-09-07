@@ -1,5 +1,5 @@
 // src/components/UploadInterface.jsx
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { retrieveNotebooks, newNotebook } from '../supabase/retrieve_notebooks'
 import { uploadSources } from '../supabase/sources'
 
@@ -28,37 +28,179 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
     setDragOver(false)
   }
 
-  const CallRAG = async(newSources) => {
-		
-		const payload = newSources
 
-		console.log('Payload', payload)
+  const callRag =  async (newSources) => {
 
-		setGeneratingAIResponse(true)
+      // console.log('Sources', newSources)
 
-    const assistantRAGStream = 'http://127.0.0.1:8001/context/pdf_stream'
-		console.log("Payload", payload)
+      // const payload = {
+      //   user_id: '7f0d5363-6368-4f9a-bb91-e5213197fa7b',
+      //   files: newSources.map(source => ({
+      //     notebook_id: source.notebook_id,
+      //     fileName: source.name,
+      //     file: source.file 
+      //   }))
+      // };
 
-		try {
-			console.log("Calling API to add message...");
-	  
-			console.log("Preparing to call EventSource API", assistantRAGStream)
+      const assistantRAGStream = 'http://127.0.0.1:8001/context/pdf_stream'
 
-      const response = await fetch(assistantRAGStream, {
+      for (const source of newSources) {
+        const payload = {
+          user_id: '7f0d5363-6368-4f9a-bb91-e5213197fa7b',
+          notebook_id: source.notebook_id,
+          fileName: source.name,
+          file: source.file 
+        };
+        
+        console.log('Processing file:', source.name);
+
+        console.log('Updated Payload', payload)
+        
+        const response = await fetch(assistantRAGStream, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.statusText}`);
+        }
+        const reader = response.body?.getReader();
+
+      }
+
+  } 
+
+
+  const callWebsiteRag =  async (newSources) => {
+
+    const assistantWebsiteStream = 'http://127.0.0.1:8001/context/website_stream'
+
+    for (const source of newSources) {
+      const payload = {
+        user_id: '7f0d5363-6368-4f9a-bb91-e5213197fa7b',
+        notebook_id: source.notebook_id,
+        url: source.url 
+      };
+      
+      console.log('Processing file:', source.url);
+
+      console.log('Updated Payload', payload)
+      
+      const response = await fetch(assistantWebsiteStream, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
       
-      const reader = response.body.getReader();
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`);
+      }
+      const reader = response.body?.getReader();
 
-		} catch (error) {
-			console.error("Error in send message:", error)
-			setGeneratingAIResponse(false)
-		}
-	}
+    }
+
+} 
+
+  const callYoutubeRag =  async (newSources) => {
+
+    const assistantWebsiteStream = 'http://127.0.0.1:8001/context/youtube_stream'
+
+    for (const source of newSources) {
+      const payload = {
+        user_id: '7f0d5363-6368-4f9a-bb91-e5213197fa7b',
+        notebook_id: source.notebook_id,
+        url: source.url 
+      };
+      
+      console.log('Processing file:', source.url);
+
+      console.log('Updated Payload', payload)
+      
+      const response = await fetch(assistantWebsiteStream, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`);
+      }
+      const reader = response.body?.getReader();
+
+    }
+
+  } 
+
+
+
+
+  // const CallRAG = async(newSources) => {
+		
+	// 	const payload = newSources
+
+	// 	console.log('Payload', payload)
+
+	// 	setGeneratingAIResponse(true)
+
+  //   const assistantRAGStream = 'http://127.0.0.1:8001/context/pdf_stream'
+	// 	console.log("Payload", payload)
+
+	// 	try {
+	// 		console.log("Calling API to add message...");
+	  
+	// 		console.log("Preparing to call EventSource API", assistantRAGStream)
+
+  //     const response = await fetch(assistantRAGStream, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+      
+  //     const reader = response.body.getReader();
+
+	// 	} catch (error) {
+	// 		console.error("Error in send message:", error)
+	// 		setGeneratingAIResponse(false)
+	// 	}
+	// }
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Extract just the base64 part after the comma
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+
+  const handleFileChange = (file) => {
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        const base64String = reader.result.split(",")[1]; // remove "data:application/pdf;base64,"
+        setBase64PDF(base64String);
+        console.log("Base64 PDF:", base64String);
+      };
+
+      reader.readAsDataURL(file); // convert file to base64
+    }
+  };
+
 
 
   const processFiles = async (files) => {
@@ -78,14 +220,18 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
       
       // const base64 = await fileToBase64(file)
     
-      const newSources = Array.from(files).map((file, index) => ({
+      const newSources = await Promise.all(Array.from(files).map(async (file, index) => {
+        const base64Data = await fileToBase64(file)
+
+        return {
         id: Date.now() + index,
         name: file.name,
         type: 'PDF',
         sourceType: 'file',
         size: file.size,
-        file: file,
+        file: base64Data,
         notebook_id: notebookId_
+        };
       }))
 
       console.log('Calling Table')
@@ -102,18 +248,24 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
         onNotebookCreation(notebookId_)
       }
 
-      // await CallRAG(newSources)
+      callRag(newSources).catch(error => {
+        console.error('RAG processing failed:', error)
+      })
 
     } else {
 
-      const newSources = Array.from(files).map((file, index) => ({
+      const newSources = await Promise.all(Array.from(files).map(async (file, index) => {
+        const base64Data = await fileToBase64(file)
+
+        return {
         id: Date.now() + index,
         name: file.name,
         type: 'PDF',
         sourceType: 'file',
         size: file.size,
-        file: file,
+        file: base64Data,
         notebook_id: notebookId
+        };
       }))
 
       console.log('Calling Table with Existing Id')
@@ -124,6 +276,10 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
       if (onSourcesUploaded) {
         onSourcesUploaded([...uploadedSources, ...newSources])
       }
+
+      callRag(newSources).catch(error => {
+        console.error('RAG processing failed:', error)
+      })
       
     }
 
@@ -134,17 +290,9 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
   const handleWebsiteSubmit = async() => {
     if (websiteUrls.trim()) {
       const urls = websiteUrls.split(/[\n\s]+/).filter(url => url.trim())
-      const newSources = urls.map((url, index) => ({
-        id: Date.now() + index,
-        name: url,
-        type: 'Website',
-        sourceType: 'url',
-        url: url
-      }))
 
       console.log('Calling Table')
 
-      // if no notebookId exists, create one
       if (!notebookId) {
         const data = {
           title: "New Notebook",
@@ -155,9 +303,20 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
         const notebookId_ = await newNotebook(data)
         setNotebookId(notebookId_)
         console.log('Created new notebook:', notebookId_)
-        await uploadSources(newSources, 'website', notebookId_)
 
+        const newSources = urls.map((url, index) => ({
+          id: Date.now() + index,
+          name: url,
+          type: 'Website',
+          sourceType: 'url',
+          url: url,
+          notebook_id: notebookId_
+        }))
+
+
+        await uploadSources(newSources, 'website', notebookId_)
         setUploadedSources(newSources)
+
         if (onSourcesUploaded) {
           onSourcesUploaded(newSources)
         }
@@ -166,7 +325,20 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
           onNotebookCreation(notebookId_)
         }
 
+        callWebsiteRag(newSources).catch(error => {
+          console.error('RAG processing failed:', error)
+        })
+
       } else {
+
+        const newSources = urls.map((url, index) => ({
+          id: Date.now() + index,
+          name: url,
+          type: 'Website',
+          sourceType: 'url',
+          url: url,
+          notebook_id: notebookId
+        }))
 
         await uploadSources(newSources, 'website', notebookId)
         setUploadedSources(newSources)
@@ -174,6 +346,10 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
         if (onSourcesUploaded) {
           onSourcesUploaded([...uploadedSources, ...newSources])
         }
+
+        callWebsiteRag(newSources).catch(error => {
+          console.error('RAG processing failed:', error)
+        })
       }
       // setUploadedSources(updatedSources)
       // setSourcesCount(prev => prev + urls.length)
@@ -189,14 +365,6 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
 
       const urls = youtubeUrl.split(/[\n\s]+/).filter(url => url.trim())
 
-      const newSources = urls.map((url, index) => ({
-        id: Date.now() + index,
-        name: url,
-        type: 'YouTube',
-        sourceType: 'youtube',
-        url: url,
-      }))
-
       console.log('Calling table')
 
       if (!notebookId) {
@@ -210,6 +378,15 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
         setNotebookId(notebookId_)
         console.log('Created new notebook:', notebookId_)
 
+        const newSources = urls.map((url, index) => ({
+          id: Date.now() + index,
+          name: url,
+          type: 'YouTube',
+          sourceType: 'youtube',
+          url: url,
+          notebook_id: notebookId_
+        }))
+
         await uploadSources(newSources, 'youtube', notebookId_)
 
         setUploadedSources(newSources)
@@ -221,7 +398,22 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
         if (onNotebookCreation) {
           onNotebookCreation(notebookId_)
         }
+
+        callYoutubeRag(newSources).catch(error => {
+          console.error('RAG processing failed:', error)
+        })
+
+
       } else {
+
+        const newSources = urls.map((url, index) => ({
+          id: Date.now() + index,
+          name: url,
+          type: 'YouTube',
+          sourceType: 'youtube',
+          url: url,
+          notebook_id: notebookId
+        }))
 
         await uploadSources(newSources, 'youtube', notebookId)
         setUploadedSources(newSources)
@@ -230,10 +422,14 @@ export function UploadInterface({ onSourcesUploaded, existingNotebookId, onNoteb
           onSourcesUploaded([...uploadedSources, ...newSources])
         }
 
+        callYoutubeRag(newSources).catch(error => {
+          console.error('RAG processing failed:', error)
+        })
+
       }
       
-      const updatedSources = [...uploadedSources, newSources]
-      setUploadedSources(updatedSources)
+      // const updatedSources = [...uploadedSources, newSources]
+      // setUploadedSources(updatedSources)
       setSourcesCount(prev => prev + 1)
       setYoutubeUrl('')
       setCurrentView('main')

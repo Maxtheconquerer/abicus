@@ -18,19 +18,20 @@ export function LearningGames({ showUploadModal, onCloseUploadModal, uploadedSou
   }, [notebookId, uploadedSources, notebookId__])
 
   const loadPage = async() => {
-    
-    if (!notebookId__) {
-      console.log('Searching Table', notebookId)
-      setNotebookId(notebookId)
-      const sourcesDB = await retrieveSources(notebookId)
-      console.log('SourcesfromDB', sourcesDB)
-      setSourcesFromDb(sourcesDB)
-      setSourcesLength(sourcesDB.length)
-      
-    } else {
+    // If we have a new notebook ID from upload, use that
+    if (notebookId__) {
       console.log('Searching Table', notebookId__)
       setNotebookId(notebookId__)
       const sourcesDB = await retrieveSources(notebookId__)
+      console.log('SourcesfromDB', sourcesDB)
+      setSourcesFromDb(sourcesDB)
+      setSourcesLength(sourcesDB.length)
+    } 
+    // Otherwise, use the original notebookId prop (for navigation)
+    else if (notebookId) {
+      console.log('Searching Table', notebookId)
+      setNotebookId(notebookId)
+      const sourcesDB = await retrieveSources(notebookId)
       console.log('SourcesfromDB', sourcesDB)
       setSourcesFromDb(sourcesDB)
       setSourcesLength(sourcesDB.length)
