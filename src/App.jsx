@@ -3,6 +3,8 @@ import { supabase } from "../supabaseClient"
 import { UploadInterface } from './components/UploadInterface'
 import { LearningGames } from './components/LearningGames'
 import { Community } from './components/Community'
+import { Chat } from './components/Chat'
+import { ChatProvider } from './supabase/chat_context' // Add this import
 import { uploadSources } from './supabase/sources'
 
 function App() {
@@ -11,7 +13,7 @@ function App() {
   const [newMessage, setNewMessage] = useState('')
   const [usersOnline, setUsersOnline] = useState([])
   const [activeSection, setActiveSection] = useState('community') // New state for navigation
-  const [showUploadModal, setShowUploadModal] = useState(false) // New state for upload modal
+  const [showUploadModal, setShowUploadModal] = useState(false)  
   const [currentNotebookId, setCurrentNotebookId] = useState(null) // Current active notebook ID
   const [currentNotebookName, setCurrentNotebookName] = useState('') // Current active notebook name
   const [notebooks, setNotebooks] = useState({}) // State for sources organized by notebook ID: {notebookId: [sources]}
@@ -157,6 +159,12 @@ function App() {
         onSelectNotebook={selectNotebook}
         onNotebookIdChange={handleNotebookIdChange}
       />
+      case 'chat':
+        return (
+          <ChatProvider>
+            <Chat />
+          </ChatProvider>
+        )
       default:
         return <UploadInterface />
     }
@@ -200,19 +208,19 @@ function App() {
                   >
                     📄 Upload Documents
                   </button>
-                </li>
+                </li> */}
                 <li>
                   <button
-                    onClick={() => setActiveSection('learning-games')}
+                    onClick={() => setActiveSection('chat')}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      activeSection === 'learning-games' 
+                      activeSection === 'chat' 
                         ? 'bg-blue-600 text-white' 
                         : 'text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    🎮 Learning Games
+                    🎮 Chat
                   </button>
-                </li> */}
+                </li>
               </ul>
             </nav>
 
