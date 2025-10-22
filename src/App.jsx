@@ -77,24 +77,24 @@ function App() {
     }))
   }
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+  // useEffect(() => {
+  //   supabase.auth.getSession().then(({ data: { session } }) => {
+  //     setSession(session)
+  //   })
+  //   const {
+  //     data: { subscription },
+  //   } = supabase.auth.onAuthStateChange((_event, session) => {
+  //     setSession(session)
+  //   })
+  //   return () => subscription.unsubscribe()
+  // }, [])
 
-  useEffect(() => {
-    if (!session?.user) {
-      setUsersOnline([]);
-      return;
-    } 
-  }, [session])
+  // useEffect(() => {
+  //   if (!session?.user) {
+  //     setUsersOnline([]);
+  //     return;
+  //   } 
+  // }, [session])
 
   // send message
   const sendMessage = async (e) => {
@@ -170,13 +170,13 @@ function App() {
     }
   }
 
-  if (!session) {
-    return (
-      <div className="w-full flex h-screen justify-center items-center">
-        <button onClick={signIn}>sign in with google</button>
-      </div>
-    )
-  } else {
+  // if (!session) {
+  //   return (
+  //     <div className="w-full flex h-screen justify-center items-center">
+  //       <button onClick={signIn}>sign in with google</button>
+  //     </div>
+  //   )
+  // } else {
     return (
       <div className="w-full flex h-screen justify-center items-center p-4">
         <div className="border-[1px] border-gray-700 max-w-9xl w-full min-h-[900px] rounded-lg flex">
@@ -242,6 +242,6 @@ function App() {
       </div>
     )
   }
-}
+
 
 export default App
